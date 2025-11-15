@@ -901,7 +901,7 @@ function add_sourceflags(self, sourcefile, fileconfig, target, targetkind)
     --   add_files("*.c", {sourcekind = "cxx"})
     --
     local sourcekind = fileconfig.sourcekind
-    if sourcekind and sourcekind ~= language.sourcekind_of(sourcefile) then
+    if sourcekind then
         local maps = {cc = "-x c", cxx = "-x c++"}
         return maps[sourcekind]
     end
@@ -1058,10 +1058,7 @@ function compile(self, sourcefile, objectfile, dependinfo, flags, opt)
                             lines = table.slice(lines, 1, (#lines > 16 and 16 or #lines))
                         end
                         local warnings = table.concat(lines, "\n")
-                        if progress.showing_without_scroll() then
-                            print("")
-                        end
-                        cprint("${color.warning}%s", warnings)
+                        progress.show_output("${color.warning}%s", warnings)
                     end
                 end
 

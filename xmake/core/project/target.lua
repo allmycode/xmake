@@ -279,19 +279,25 @@ function _instance:_get_from_deps(name, result_values, result_sources, opt)
     local total = #orderdeps
     for idx, _ in ipairs(orderdeps) do
         local dep = orderdeps[total + 1 - idx]
-        local values = dep:get(name, opt)
-        if values ~= nil then
-            table.insert(result_values, values)
-            table.insert(result_sources, "dep::" .. dep:name())
-        end
-        local dep_values = {}
-        local dep_sources = {}
-        dep:_get_from_options(name, dep_values, dep_sources, opt)
-        dep:_get_from_packages(name, dep_values, dep_sources, opt)
-        for idx, values in ipairs(dep_values) do
-            local dep_source = dep_sources[idx]
-            table.insert(result_values, values)
-            table.insert(result_sources, "dep::" .. dep:name() .. "/" .. dep_source)
+        -- We can inherit some configuration from dependencies.
+        -- e.g. disable to inherit links, add_deps("foo", {links = false})
+        -- @see https://github.com/xmake-io/xmake/issues/6925
+        local inherit = self:extraconf("deps", dep:name(), name)
+        if inherit ~= false then
+            local values = dep:get(name, opt)
+            if values ~= nil then
+                table.insert(result_values, values)
+                table.insert(result_sources, "dep::" .. dep:name())
+            end
+            local dep_values = {}
+            local dep_sources = {}
+            dep:_get_from_options(name, dep_values, dep_sources, opt)
+            dep:_get_from_packages(name, dep_values, dep_sources, opt)
+            for idx, values in ipairs(dep_values) do
+                local dep_source = dep_sources[idx]
+                table.insert(result_values, values)
+                table.insert(result_sources, "dep::" .. dep:name() .. "/" .. dep_source)
+            end
         end
     end
 end
@@ -1065,17 +1071,17 @@ end
 
 -- get the target compiler
 function _instance:compiler(sourcekind)
-    local compilerinst = self:_memcache():get("compiler")
+    if not sourcekind then
+        os.raise("please pass sourcekind to the first argument of target:compiler(), e.g. cc, cxx, as")
+    end
+    local compilerinst = self:_memcache():get("compiler_" .. sourcekind)
     if not compilerinst then
-        if not sourcekind then
-            os.raise("please pass sourcekind to the first argument of target:compiler(), e.g. cc, cxx, as")
-        end
         local instance, errors = compiler.load(sourcekind, self)
         if not instance then
             os.raise(errors)
         end
         compilerinst = instance
-        self:_memcache():set("compiler", compilerinst)
+        self:_memcache():set("compiler_" .. sourcekind, compilerinst)
     end
     return compilerinst
 end

@@ -96,7 +96,10 @@ end
 function _add_targetjobs_plain_orders(jobgraph, target, dep, opt)
     local jobname, jobname_dep
     local job_kind = opt.job_kind
-    if job_kind == "build" then
+    -- Configure the build order only if dependency linking inheritance is not disabled.
+    -- e.g. add_deps("foo", {links = false})
+    -- @see https://github.com/xmake-io/xmake/issues/6925
+    if job_kind == "build" and target:extraconf("deps", dep:name(), "links") ~= false then
         jobname = target:fullname() .. "/link"
         jobname_dep = dep:fullname() .. "/link"
         if not jobgraph:has(jobname) then
@@ -115,7 +118,10 @@ end
 function _add_targetjobs_deep_orders(jobgraph, target, dep, opt)
     local jobname, jobname_dep
     local job_kind = opt.job_kind
-    local target_fence = opt.target_fence or dep:policy("build.fence") or dep:policy("build.across_targets_in_parallel") == false
+    local target_fence = opt.target_fence
+    if target_fence == nil and (job_kind == "prepare" or job_kind == "build") then
+        target_fence = dep:policy("build.fence") or dep:policy("build.across_targets_in_parallel") == false
+    end
     if target_fence then
         jobname = string.format("%s/begin_%s", target:fullname(), job_kind)
         jobname_dep = string.format("%s/end_%s", dep:fullname(), job_kind)
@@ -785,14 +791,9 @@ function run_targetjobs(targets_root, opt)
     local jobgraph = get_targetjobs(targets_root, opt)
     if jobgraph and not jobgraph:empty() then
         local curdir = os.curdir()
-        async_runjobs(job_kind, jobgraph, {on_exit = function (errors)
-            import("utils.progress")
-            if errors and progress.showing_without_scroll() then
-                print("")
-            end
-        end,
-        comax = opt.jobs or option.get("jobs") or 1, curdir = curdir,
-        distcc = opt.distcc, remote_only = opt.remote_only, progress_factor = opt.progress_factor})
+        async_runjobs(job_kind, jobgraph, {
+            comax = opt.jobs or option.get("jobs") or 1, curdir = curdir,
+            distcc = opt.distcc, remote_only = opt.remote_only, progress_factor = opt.progress_factor})
         os.cd(curdir)
         return true
     end
@@ -805,14 +806,9 @@ function run_filejobs(targets_root, opt)
     local jobgraph = get_filejobs(targets_root, opt)
     if jobgraph and not jobgraph:empty() then
         local curdir = os.curdir()
-        async_runjobs(job_kind, jobgraph, {on_exit = function (errors)
-            import("utils.progress")
-            if errors and progress.showing_without_scroll() then
-                print("")
-            end
-        end,
-        comax = opt.jobs or option.get("jobs") or 1, curdir = curdir,
-        distcc = opt.distcc, remote_only = opt.remote_only, progress_factor = opt.progress_factor})
+        async_runjobs(job_kind, jobgraph, {
+            comax = opt.jobs or option.get("jobs") or 1, curdir = curdir,
+            distcc = opt.distcc, remote_only = opt.remote_only, progress_factor = opt.progress_factor})
         os.cd(curdir)
         return true
     end
