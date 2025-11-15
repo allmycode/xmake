@@ -32,7 +32,7 @@ import("package.manager.pkgconfig.find_package", {alias = "find_package_from_pkg
 function _find_package_from_pkgconfig(pkgconfig_files, opt)
     opt = opt or {}
     local foundpc = false
-    local result = {includedirs = {}, linkdirs = {}, links = {}}
+    local result = {includedirs = {}, linkdirs = opt.linkdirs, links = {}}
     for _, pkgconfig_file in ipairs(pkgconfig_files) do
         local pkgconfig_dir = path.join(opt.installdir, path.directory(pkgconfig_file))
         local pkgconfig_name = path.basename(pkgconfig_file)

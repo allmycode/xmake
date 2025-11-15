@@ -1190,6 +1190,14 @@ function _instance:envs()
         end
         envs[name] = values
     end
+    -- add libdirs to PATH. On Windows it hepls to find .dlls 
+    if self._FETCHINFO and self._FETCHINFO["linkdirs"] then
+        if envs["PATH"] then
+            for _, v in ipairs(self._FETCHINFO["linkdirs"]) do
+                table.insert(envs["PATH"], v)
+            end
+        end
+    end
     return envs
 end
 
@@ -1973,6 +1981,9 @@ function _instance:_fetch_library(opt)
                                            force = opt.force})
         end
     end
+    for _, fi in ipairs(fetchinfo) do
+        print("FETCHINFO %s", fi)
+    end
     return fetchinfo or nil
 end
 
@@ -2008,7 +2019,7 @@ function _instance:find_package(name, opt)
     if configs.runtimes then
         configs.runtimes = self:runtimes()
     end
-    return self._find_package(name, {
+    local fp = self._find_package(name, {
                               force = opt.force,
                               installdir = self:installdir({readonly = true}),
                               bindirs = self:get("bindirs"),
@@ -2030,6 +2041,12 @@ function _instance:find_package(name, opt)
                               funcs = opt.funcs,
                               snippets = opt.snippets,
                               includes = opt.includes})
+
+    print("NOPPPP")
+    for _, ppp in ipairs(fp.linkdirs) do
+        print("PPP: %s", ppp)
+    end
+    return fp
 end
 
 -- fetch the local package info
